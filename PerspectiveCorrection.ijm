@@ -4,7 +4,11 @@
 // by means of solving a homographic transformation
 // based on 4 reference points on the input image
 // which correspond, on the (perspective-corrected) output image,
-// to the the vertices of a square or rectangle
+// to the the vertices of a square or rectangle.
+//
+// Optionally the 4 reference points on the output image
+// can be placed on general positions (instead of on the vertices of a rectangle/square)
+// thus allowing for an image warping instead of perspective correction
 //
 // PerspectiveCorrection.ijm
 // 2025.02.25
@@ -18,7 +22,6 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 var VERBOSE = 0;		// print progress on the log window
-var RECT_REQUIRED = 0;	// requires a rectangular/square selection at the output image
 
 requires("1.51r");
 
@@ -29,16 +32,16 @@ if(VERBOSE)	print("CORRECTING THE PERSPECTIVE OF AN IMAGE\n");
 openImages = getList("image.titles");
 if(openImages.length==0)	openImages[0] = "-- no images --";
 
-choices = newArray("graphically", "numerically");
+choices_input = newArray("graphically", "numerically");
+choices_output = newArray("graphically (points on vertices of a rectangle/square)", "graphically (points on arbitrary positions)", "numerically");
 
 Dialog.createNonBlocking("Perspective correction");
 Dialog.addMessage("CORRECTING THE PERSPECTIVE OF AN IMAGE\n \n" +
-			"The image to be corrected must contain 4 reference points\n" +
-			"which correspond to the vertices of a square/rectangle\n" +
-			"on the (future) corrected image");
+			"The input image (to be corrected) must contain 4 reference points\n" +
+			"which correspond to 4 reference points on the output image (corrected)");
 Dialog.addChoice("Image to be corrected:", openImages);	
-Dialog.addRadioButtonGroup("Method to enter reference points of input image:", choices, 1, 2, "graphically");
-Dialog.addRadioButtonGroup("Method to enter reference points of output image:", choices, 1, 2, "graphically");
+Dialog.addRadioButtonGroup("Method to enter reference points on INPUT image:", choices_input, 2, 1, "graphically");
+Dialog.addRadioButtonGroup("Method to enter reference points on OUTPUT image:", choices_output, 3, 1, "graphically (points on vertices of a rectangle/square)");
 Dialog.show;
 imgName = Dialog.getChoice();
 inputPointsMethod = Dialog.getRadioButton;
@@ -55,6 +58,7 @@ if(VERBOSE)
 	print("");
 }
 
+
 // SELECTING THE REFERENCE POINTS ON THE INPUT IMAGE
 
 if(inputPointsMethod == "graphically")	// selecting points graphically
@@ -62,9 +66,9 @@ if(inputPointsMethod == "graphically")	// selecting points graphically
 	setTool("polygon");
 
 	Dialog.createNonBlocking("Points on input image");
-	Dialog.addMessage("Using the POLYGON selection tool of the menu\n" +
-			"join the 4 reference points on the INPUT image (to be corrected)\n" +
-			"starting from the top-left reference point and going clockwise:");
+	Dialog.addMessage("Draw on the image a polygon\n" +
+				"whose 4 vertices mark the positions of the references\n" +
+				"starting from the top-left reference point and going clockwise:");
 	Dialog.addMessage("start > > > > > > >1\n"+
 				 "  ^                            v\n"+
 				 "  ^                            v\n"+
@@ -83,19 +87,19 @@ if(inputPointsMethod == "graphically")	// selecting points graphically
 	n = U.length;
 	if( n!=4 )	exit("ERROR: Selection must have 4 points");
 }
-else 	// entering points numerically
+else	// entering points numerically
 {
 	U = newArray(4);
 	V = newArray(4);
 	n = 4;
 
 	Dialog.createNonBlocking("Points on input image");
+	Dialog.addMessage("Enter the coordinates of the reference points\non the INPUT image");
 	Dialog.addMessage("(U0,V0) ---------------- (U1,V1)\n"+
 				"      |                                    |      \n" +
 				"      |                                    |      \n" +
 				"      |                                    |      \n" +
 				"(U3,V3) ---------------- (U2,V2)\n");		
-	Dialog.addMessage("Enter the coordinates of the reference points\non the INPUT image");
 	Dialog.addNumber("U0", 0); Dialog.addToSameRow(); Dialog.addNumber("V0", 0);
 	Dialog.addNumber("U1", 0); Dialog.addToSameRow(); Dialog.addNumber("V1", 0);
 	Dialog.addNumber("U2", 0); Dialog.addToSameRow(); Dialog.addNumber("V2", 0);
@@ -118,49 +122,19 @@ if(VERBOSE)
 
 // SELECTING THE REFERENCE POINTS ON THE OUTPUT IMAGE
 
-if(outputPointsMethod == "graphically")	// selecting points graphically
-{
-	selectImage(imgName);
-	run("Select None");
-
-	setTool("rectangle");
-
-	Dialog.createNonBlocking("Points on output image");
-	Dialog.addMessage("Using the RECTANGLE selection tool of the menu\n" +
-				"draw on the image a square/rectangle\n" +
-				"whose 4 vertices mark the goal positions of the references\n" +
-				"once the image perspective had been corrected");				
-	Dialog.addMessage("start > > > > > > >1\n"+
-				 "  ^                            v\n"+
-				 "  ^                            v\n"+
-				 "  ^                            v\n"+
-				 "  3 < < < < < < < < 2"); 
-	Dialog.addMessage("Press and hold <Shift> while drawing to force a square\nPress OK when done\n ");
-	Dialog.show;
-
-	type = selectionType;
-	//print("Selection type is:", type);
-	if( type<0 )	exit("ERROR: Image contains no selection");
-	if(RECT_REQUIRED)
-		if( type!=0 )	exit("ERROR: Selection must be a rectangle/square");
-
-	getSelectionCoordinates(X, Y);
-	n = X.length;
-	if( n!=4 )	exit("ERROR: Selection must have 4 points");
-}
-else 	// entering points numerically
+if(outputPointsMethod == "numerically")	// entering points numerically
 {
 	X = newArray(4);
 	Y = newArray(4);
 	n = 4;
 
 	Dialog.createNonBlocking("Points on output image");
+	Dialog.addMessage("Enter the coordinates of the reference points\non the OUTPUT image");
 	Dialog.addMessage("(X0,Y0) ---------------- (X1,Y1)\n"+
 				"      |                                    |      \n" +
 				"      |                                    |      \n" +
 				"      |                                    |      \n" +
 				"(X3,Y3) ---------------- (X2,Y2)\n");	
-	Dialog.addMessage("Enter the coordinates of the reference points\non the OUTPUT image");
 	Dialog.addNumber("X0", 0); Dialog.addToSameRow(); Dialog.addNumber("Y0", 0);
 	Dialog.addNumber("X1", 0); Dialog.addToSameRow(); Dialog.addNumber("Y1", 0);
 	Dialog.addNumber("X2", 0); Dialog.addToSameRow(); Dialog.addNumber("Y2", 0);
@@ -172,6 +146,62 @@ else 	// entering points numerically
 		X[i] = Dialog.getNumber();
 		Y[i] = Dialog.getNumber();
 	}
+}
+else if(outputPointsMethod == "graphically (points on vertices of a rectangle/square)")	// selecting points graphically on a rectangle/square
+{
+	selectImage(imgName);
+	run("Select None");
+
+	setTool("rectangle");
+
+	Dialog.createNonBlocking("Points on output image");
+	Dialog.addMessage("Draw on the image a square/rectangle\n" +
+				"whose 4 vertices mark the goal positions of the references\n" +
+				"once the image perspective had been corrected");
+	Dialog.addMessage("Press and hold <Shift> while drawing to force a square\nPress OK when done\n ");				
+	Dialog.addMessage("start > > > > > > >1\n"+
+				 "  ^                            v\n"+
+				 "  ^                            v\n"+
+				 "  ^                            v\n"+
+				 "  3 < < < < < < < < 2"); 
+	Dialog.show;
+
+	type = selectionType;
+	//print("Selection type is:", type);
+	if( type<0 )	exit("ERROR: Image contains no selection");
+	if( type!=0 )	exit("ERROR: Selection must be a rectangle/square");
+
+	getSelectionCoordinates(X, Y);
+	n = X.length;
+	if( n!=4 )	exit("ERROR: Selection must have 4 points");
+}
+else 	// selecting points graphically on a polygon
+{
+	selectImage(imgName);
+	run("Select None");
+
+	setTool("polygon");
+
+	Dialog.createNonBlocking("Points on output image");
+	Dialog.addMessage("Draw on the image a polygon\n" +
+				"whose 4 vertices mark the goal positions of the references\n" +
+				"(once the image perspective had been corrected)\n" +
+				"starting from the top-left reference point and going clockwise:");				
+	Dialog.addMessage("start > > > > > > >1\n"+
+				 "  ^                            v\n"+
+				 "  ^                            v\n"+
+				 "  ^                            v\n"+
+				 "  3 < < < < < < < < 2"); 
+	Dialog.show;
+
+	type = selectionType;
+	//print("Selection type is:", type);
+	if( type<0 )	exit("ERROR: Image contains no selection");
+	if( type!=2 )	exit("ERROR: Selection must be a polygon");
+
+	getSelectionCoordinates(X, Y);
+	n = X.length;
+	if( n!=4 )	exit("ERROR: Selection must have 4 points");
 }
 
 if(VERBOSE)
@@ -292,11 +322,12 @@ exit;
 
 // Solves the homography matrix of a perspective projection
 // given the coordinates of 4 points on the first projection
-// and the coordinates of the 4 corresponding points on the secon projection
+// and the coordinates of the 4 corresponding points on the second projection
 
 //
 // SOURCE:
 // https://towardsdatascience.com/estimating-a-homography-matrix-522c70ec4b2c
+// https://www.cs.umd.edu/class/fall2019/cmsc426-0201/files/16_Homography-estimation-and-decomposition.pdf
 //
 // Arguments:
 //	X:	Array holding the X coordinates of the 4 points on the first projection
