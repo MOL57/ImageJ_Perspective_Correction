@@ -2,7 +2,7 @@
 **ImageJ macro to correct/rectify the perspective of an image.**
 
 Requires ImageJ version 1.51r  or higher.
-![Correcting perspective process](images/fig1.JPG)
+![Correcting perspective process](images/fig1.jpg)
 
 Corrects the perspective by solving a homographic transformation
 given the coordinates of 4 points on the input image
